@@ -120,12 +120,14 @@ PRODUCT_PACKAGES += \
     AudioFX \
     CMSettingsProvider \
     LineageSetupWizard \
-    Eleven \
+    Pornograph \
     ExactCalculator \
-    Jelly \
+    Focus \
     LockClock \
     ThemeInterfacer \
-    Trebuchet \
+    Lawnchair \
+    Adaway \
+    Fdroid \
     WallpaperPicker \
     WeatherProvider
 
