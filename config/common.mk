@@ -128,6 +128,7 @@ PRODUCT_PACKAGES += \
     Lawnchair \
     Adaway \
     Fdroid \
+    Blu \
     Substratum \
     WallpaperPicker \
     WeatherProvider
