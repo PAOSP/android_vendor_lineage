@@ -129,6 +129,10 @@ PRODUCT_PACKAGES += \
     WallpaperPicker \
     WeatherProvider
 
+# Custom HnT packages
+PRODUCT_PACKAGES += \
+    Launcher3
+
 # Exchange support
 PRODUCT_PACKAGES += \
     Exchange2
