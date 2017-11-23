@@ -125,13 +125,12 @@ PRODUCT_PACKAGES += \
     Jelly \
     LockClock \
     ThemeInterfacer \
-    Trebuchet \
     WallpaperPicker \
     WeatherProvider
 
 # Custom HnT packages
 PRODUCT_PACKAGES += \
-    Launcher3
+    HnTLauncher
 
 # Exchange support
 PRODUCT_PACKAGES += \
