@@ -123,6 +123,8 @@ PRODUCT_PACKAGES += \
     Pornograph \
     ExactCalculator \
     Focus \
+    About \
+    CMWallpapers \
     LockClock \
     ThemeInterfacer \
     Lawnchair \
