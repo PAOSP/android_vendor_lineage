@@ -122,7 +122,7 @@ PRODUCT_PACKAGES += \
     LineageSetupWizard \
     Pornograph \
     ExactCalculator \
-    Focus \
+    Fireporn \
     About \
     CMWallpapers \
     LockClock \
