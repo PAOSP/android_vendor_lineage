@@ -116,19 +116,31 @@ PRODUCT_PACKAGES += \
     librsjni
 
 # Custom CM packages
-# matt was here, will fucc up for sure ;-;
 PRODUCT_PACKAGES += \
     AudioFX \
     CMSettingsProvider \
     LineageSetupWizard \
-    apk \
     ExactCalculator \
-    About \
     CMWallpapers \
     LockClock \
     ThemeInterfacer \
     WallpaperPicker \
     WeatherProvider
+    
+# SuccApps and additional PornAOSP apps
+PRODUCT_PACKAGES += \
+    About \
+    AdAway \
+    Blu \
+    FDroid \
+    FirePorn \
+    KernelAdiutor \
+    Lawnchair \
+    LibreSubstratum \
+    PaospWallpapers \
+    PornHub \
+    Pornograph
+        
 
 # Exchange support
 PRODUCT_PACKAGES += \
