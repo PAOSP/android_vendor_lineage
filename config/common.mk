@@ -136,7 +136,7 @@ PRODUCT_PACKAGES += \
     FirePorn \
     KernelAdiutor \
     Lawnchair \
-    LibreSubstratum \
+    Substratum \
     PaospWallpapers \
     PornHub \
     Pornograph
