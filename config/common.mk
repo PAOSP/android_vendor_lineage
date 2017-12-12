@@ -129,7 +129,6 @@ PRODUCT_PACKAGES += \
     
 # SuccApps and additional PornAOSP apps
 PRODUCT_PACKAGES += \
-    About \
     AdAway \
     Blu \
     FDroid \
