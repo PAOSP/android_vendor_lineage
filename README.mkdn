@@ -9,7 +9,7 @@ familiar with [Git and Repo](https://source.android.com/source/using-repo.html).
 
 To initialize your local repository using the PornAOSP trees, use a command like this:
 
-    repo init -u git://github.com/VolteROM/android.git -b staging/lineage-15.1
+    repo init -u git://github.com/PAOSP/android.git -b paosp-o
 
 Then to sync up:
 
