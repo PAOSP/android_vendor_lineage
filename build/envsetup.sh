@@ -1,15 +1,13 @@
-function __print_cm_functions_help() {
+function __print_lineage_functions_help() {
 cat <<EOF
 Additional LineageOS functions:
 - cout:            Changes directory to out.
 - mmp:             Builds all of the modules in the current directory and pushes them to the device.
 - mmap:            Builds all of the modules in the current directory and its dependencies, then pushes the package to the device.
 - mmmp:            Builds all of the modules in the supplied directories and pushes them to the device.
-- mms:             Short circuit builder. Quickly re-build the kernel, rootfs, boot and system images
-                   without deep dependencies. Requires the full build to have run before.
-- cmgerrit:        A Git wrapper that fetches/pushes patch from/to LineageOS Gerrit Review.
-- cmrebase:        Rebase a Gerrit change and push it again.
-- cmremote:        Add git remote for LineageOS Gerrit Review.
+- lineagegerrit:   A Git wrapper that fetches/pushes patch from/to LineageOS Gerrit Review.
+- lineagerebase:   Rebase a Gerrit change and push it again.
+- lineageremote:   Add git remote for LineageOS Gerrit Review.
 - aospremote:      Add git remote for matching AOSP repository.
 - cafremote:       Add git remote for matching CodeAurora repository.
 - mka:             Builds using SCHED_BATCH on all processors.
@@ -22,6 +20,35 @@ Additional LineageOS functions:
 - installboot:     Installs a boot.img to the connected device.
 - installrecovery: Installs a recovery.img to the connected device.
 EOF
+}
+
+function mk_timer()
+{
+    local start_time=$(date +"%s")
+    $@
+    local ret=$?
+    local end_time=$(date +"%s")
+    local tdiff=$(($end_time-$start_time))
+    local hours=$(($tdiff / 3600 ))
+    local mins=$((($tdiff % 3600) / 60))
+    local secs=$(($tdiff % 60))
+    local ncolors=$(tput colors 2>/dev/null)
+    echo
+    if [ $ret -eq 0 ] ; then
+        echo -n "#### make completed successfully "
+    else
+        echo -n "#### make failed to build some targets "
+    fi
+    if [ $hours -gt 0 ] ; then
+        printf "(%02g:%02g:%02g (hh:mm:ss))" $hours $mins $secs
+    elif [ $mins -gt 0 ] ; then
+        printf "(%02g:%02g (mm:ss))" $mins $secs
+    elif [ $secs -gt 0 ] ; then
+        printf "(%s seconds)" $secs
+    fi
+    echo " ####"
+    echo
+    return $ret
 }
 
 function brunch()
@@ -40,10 +67,10 @@ function breakfast()
 {
     target=$1
     local variant=$2
-    CM_DEVICES_ONLY="true"
+    LINEAGE_DEVICES_ONLY="true"
     unset LUNCH_MENU_CHOICES
     add_lunch_combo full-eng
-    for f in `/bin/ls vendor/cm/vendorsetup.sh 2> /dev/null`
+    for f in `/bin/ls vendor/lineage/vendorsetup.sh 2> /dev/null`
         do
             echo "including $f"
             . $f
@@ -64,12 +91,7 @@ function breakfast()
                 variant="userdebug"
             fi
 
-            if ! check_product lineage_$target && check_product cm_$target; then
-                echo "** Warning: '$target' is using CM-based makefiles. This will be deprecated in the next major release."
-                lunch cm_$target-$variant
-            else
-                lunch lineage_$target-$variant
-            fi
+            lunch lineage_$target-$variant
         fi
     fi
     return $?
@@ -80,9 +102,7 @@ alias bib=breakfast
 function eat()
 {
     if [ "$OUT" ] ; then
-        MODVERSION=$(get_build_var LINEAGE_VERSION)
-        ZIPFILE=paosp-$MODVERSION.zip
-        ZIPPATH=$OUT/$ZIPFILE
+        ZIPPATH=`ls -tr "$OUT"/lineage-*.zip | tail -1`
         if [ ! -f $ZIPPATH ] ; then
             echo "Nothing to eat"
             return 1
@@ -96,7 +116,7 @@ function eat()
             done
             echo "Device Found.."
         fi
-        if (adb shell getprop ro.cm.device | grep -q "$CM_BUILD"); then
+        if (adb shell getprop ro.lineage.device | grep -q "$LINEAGE_BUILD"); then
             # if adbd isn't root we can't write to /cache/recovery/
             adb root
             sleep 1
@@ -112,7 +132,7 @@ EOF
             fi
             rm /tmp/command
         else
-            echo "The connected device does not appear to be $CM_BUILD, run away!"
+            echo "The connected device does not appear to be $LINEAGE_BUILD, run away!"
         fi
         return $?
     else
@@ -236,28 +256,28 @@ function dddclient()
    fi
 }
 
-function cmremote()
+function lineageremote()
 {
     if ! git rev-parse --git-dir &> /dev/null
     then
         echo ".git directory not found. Please run this from the root directory of the Android repository you wish to set up."
         return 1
     fi
-    git remote rm cmremote 2> /dev/null
+    git remote rm lineage 2> /dev/null
     local GERRIT_REMOTE=$(git config --get remote.github.projectname)
     if [ -z "$GERRIT_REMOTE" ]
     then
         local GERRIT_REMOTE=$(git config --get remote.aosp.projectname | sed s#platform/#android/#g | sed s#/#_#g)
         local PFX="LineageOS/"
     fi
-    local CMUSER=$(git config --get review.review.lineageos.org.username)
-    if [ -z "$CMUSER" ]
+    local LINEAGE_USER=$(git config --get review.review.lineageos.org.username)
+    if [ -z "$LINEAGE_USER" ]
     then
-        git remote add cmremote ssh://review.lineageos.org:29418/$PFX$GERRIT_REMOTE
+        git remote add lineage ssh://review.lineageos.org:29418/$PFX$GERRIT_REMOTE
     else
-        git remote add cmremote ssh://$CMUSER@review.lineageos.org:29418/$PFX$GERRIT_REMOTE
+        git remote add lineage ssh://$LINEAGE_USER@review.lineageos.org:29418/$PFX$GERRIT_REMOTE
     fi
-    echo "Remote 'cmremote' created"
+    echo "Remote 'lineage' created"
 }
 
 function aospremote()
@@ -269,6 +289,11 @@ function aospremote()
     fi
     git remote rm aosp 2> /dev/null
     local PROJECT=$(pwd -P | sed -e "s#$ANDROID_BUILD_TOP\/##; s#-caf.*##; s#\/default##")
+    # Google moved the repo location in Oreo
+    if [ $PROJECT = "build/make" ]
+    then
+        PROJECT="build"
+    fi
     if (echo $PROJECT | grep -qv "^device")
     then
         local PFX="platform/"
@@ -286,6 +311,15 @@ function cafremote()
     fi
     git remote rm caf 2> /dev/null
     local PROJECT=$(pwd -P | sed -e "s#$ANDROID_BUILD_TOP\/##; s#-caf.*##; s#\/default##")
+     # Google moved the repo location in Oreo
+    if [ $PROJECT = "build/make" ]
+    then
+        PROJECT="build"
+    fi
+    if [[ $PROJECT =~ "qcom/opensource" ]];
+    then
+        PROJECT=$(echo $PROJECT | sed -e "s#qcom\/opensource#qcom-opensource#")
+    fi
     if (echo $PROJECT | grep -qv "^device")
     then
         local PFX="platform/"
@@ -324,7 +358,7 @@ function installboot()
     sleep 1
     adb wait-for-online shell mount /system 2>&1 > /dev/null
     adb wait-for-online remount
-    if (adb shell getprop ro.cm.device | grep -q "$CM_BUILD");
+    if (adb shell getprop ro.lineage.device | grep -q "$LINEAGE_BUILD");
     then
         adb push $OUT/boot.img /cache/
         if [ -e "$OUT/system/lib/modules/*" ];
@@ -338,7 +372,7 @@ function installboot()
         adb shell dd if=/cache/boot.img of=$PARTITION
         echo "Installation complete."
     else
-        echo "The connected device does not appear to be $CM_BUILD, run away!"
+        echo "The connected device does not appear to be $LINEAGE_BUILD, run away!"
     fi
 }
 
@@ -372,13 +406,13 @@ function installrecovery()
     sleep 1
     adb wait-for-online shell mount /system 2>&1 >> /dev/null
     adb wait-for-online remount
-    if (adb shell getprop ro.cm.device | grep -q "$CM_BUILD");
+    if (adb shell getprop ro.lineage.device | grep -q "$LINEAGE_BUILD");
     then
         adb push $OUT/recovery.img /cache/
         adb shell dd if=/cache/recovery.img of=$PARTITION
         echo "Installation complete."
     else
-        echo "The connected device does not appear to be $CM_BUILD, run away!"
+        echo "The connected device does not appear to be $LINEAGE_BUILD, run away!"
     fi
 }
 
@@ -398,13 +432,13 @@ function makerecipe() {
     if [ "$REPO_REMOTE" = "github" ]
     then
         pwd
-        cmremote
-        git push cmremote HEAD:refs/heads/'$1'
+        lineageremote
+        git push lineage HEAD:refs/heads/'$1'
     fi
     '
 }
 
-function cmgerrit() {
+function lineagegerrit() {
     if [ "$(__detect_shell)" = "zsh" ]; then
         # zsh does not define FUNCNAME, derive from funcstack
         local FUNCNAME=$funcstack[1]
@@ -450,7 +484,7 @@ EOF
             case $1 in
                 __cmg_*) echo "For internal use only." ;;
                 changes|for)
-                    if [ "$FUNCNAME" = "cmgerrit" ]; then
+                    if [ "$FUNCNAME" = "lineagegerrit" ]; then
                         echo "'$FUNCNAME $1' is deprecated."
                     fi
                     ;;
@@ -543,7 +577,7 @@ EOF
                 $local_branch:refs/for/$remote_branch || return 1
             ;;
         changes|for)
-            if [ "$FUNCNAME" = "cmgerrit" ]; then
+            if [ "$FUNCNAME" = "lineagegerrit" ]; then
                 echo >&2 "'$FUNCNAME $command' is deprecated."
             fi
             ;;
@@ -642,7 +676,7 @@ EOF
     esac
 }
 
-function cmrebase() {
+function lineagerebase() {
     local repo=$1
     local refs=$2
     local pwd="$(pwd)"
@@ -650,7 +684,7 @@ function cmrebase() {
 
     if [ -z $repo ] || [ -z $refs ]; then
         echo "LineageOS Gerrit Rebase Usage: "
-        echo "      cmrebase <path to project> <patch IDs on Gerrit>"
+        echo "      lineagerebase <path to project> <patch IDs on Gerrit>"
         echo "      The patch IDs appear on the Gerrit commands that are offered."
         echo "      They consist on a series of numbers and slashes, after the text"
         echo "      refs/changes. For example, the ID in the following command is 26/8126/2"
@@ -684,20 +718,7 @@ function cmrebase() {
 }
 
 function mka() {
-    local T=$(gettop)
-    if [ "$T" ]; then
-        case `uname -s` in
-            Darwin)
-                make -C $T -j `sysctl hw.ncpu|cut -d" " -f2` "$@"
-                ;;
-            *)
-                mk_timer schedtool -B -n 10 -e ionice -n 7 make -C $T -j$(grep "^processor" /proc/cpuinfo | wc -l) "$@"
-                ;;
-        esac
-
-    else
-        echo "Couldn't locate the top of the tree.  Try setting TOP."
-    fi
+    m -j "$@"
 }
 
 function cmka() {
@@ -720,29 +741,6 @@ function cmka() {
     fi
 }
 
-function mms() {
-    local T=$(gettop)
-    if [ -z "$T" ]
-    then
-        echo "Couldn't locate the top of the tree.  Try setting TOP."
-        return 1
-    fi
-
-    case `uname -s` in
-        Darwin)
-            local NUM_CPUS=$(sysctl hw.ncpu|cut -d" " -f2)
-            ONE_SHOT_MAKEFILE="__none__" \
-                make -C $T -j $NUM_CPUS "$@"
-            ;;
-        *)
-            local NUM_CPUS=$(grep "^processor" /proc/cpuinfo | wc -l)
-            ONE_SHOT_MAKEFILE="__none__" \
-                mk_timer schedtool -B -n 1 -e ionice -n 1 \
-                make -C $T -j $NUM_CPUS "$@"
-            ;;
-    esac
-}
-
 function repolastsync() {
     RLSPATH="$ANDROID_BUILD_TOP/.repo/.repo_fetchtimes.json"
     RLSLOCAL=$(date -d "$(stat -c %z $RLSPATH)" +"%e %b %Y, %T %Z")
@@ -751,14 +749,7 @@ function repolastsync() {
 }
 
 function reposync() {
-    case `uname -s` in
-        Darwin)
-            repo sync -j 4 "$@"
-            ;;
-        *)
-            schedtool -B -n 1 -e ionice -n 1 `which repo` sync -j 4 "$@"
-            ;;
-    esac
+    repo sync -j 4 "$@"
 }
 
 function repodiff() {
@@ -799,7 +790,7 @@ function dopush()
         echo "Device Found."
     fi
 
-    if (adb shell getprop ro.cm.device | grep -q "$CM_BUILD") || [ "$FORCE_PUSH" = "true" ];
+    if (adb shell getprop ro.lineage.device | grep -q "$LINEAGE_BUILD") || [ "$FORCE_PUSH" = "true" ];
     then
     # retrieve IP and PORT info if we're using a TCP connection
     TCPIPPORT=$(adb devices \
@@ -917,7 +908,7 @@ EOF
     rm -f $OUT/.log
     return 0
     else
-        echo "The connected device does not appear to be $CM_BUILD, run away!"
+        echo "The connected device does not appear to be $LINEAGE_BUILD, run away!"
     fi
 }
 
@@ -930,13 +921,13 @@ alias cmkap='dopush cmka'
 
 function repopick() {
     T=$(gettop)
-    $T/vendor/cm/build/tools/repopick.py $@
+    $T/vendor/lineage/build/tools/repopick.py $@
 }
 
 function fixup_common_out_dir() {
     common_out_dir=$(get_build_var OUT_DIR)/target/common
     target_device=$(get_build_var TARGET_DEVICE)
-    if [ ! -z $CM_FIXUP_COMMON_OUT ]; then
+    if [ ! -z $LINEAGE_FIXUP_COMMON_OUT ]; then
         if [ -d ${common_out_dir} ] && [ ! -L ${common_out_dir} ]; then
             mv ${common_out_dir} ${common_out_dir}-${target_device}
             ln -s ${common_out_dir}-${target_device} ${common_out_dir}
