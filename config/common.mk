@@ -130,8 +130,6 @@ PRODUCT_PACKAGES += \
 # SuccApps and additional PornAOSP apps
 PRODUCT_PACKAGES += \
     AdAway \
-    Blu \
-    FDroid \
     FirePorn \
     KernelAdiutor \
     Lawnchair \
